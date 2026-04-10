@@ -1,0 +1,9 @@
+{
+  auto_https off
+  admin localhost:2019
+}
+
+:8080 {
+    reverse_proxy localhost:3000
+}
+
