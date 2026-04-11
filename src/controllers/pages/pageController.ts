@@ -4,8 +4,8 @@ import { db } from '../../../lib/db/db.js'
 import { pages } from '../../../lib/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import axios from 'axios'
 import { createPageBucket } from './minio.js'
+import { addCustomDomain } from './../../../lib/caddy.js'
 
 const createPageSchema = z.object({
     tenant_name: z.string().min(1),
@@ -13,7 +13,6 @@ const createPageSchema = z.object({
     project_name: z.string().min(1)
 })
 
-const CADDY_ADMIN = 'http://localhost:2019'
 
 export async function createPage(req: Request, res: Response) {
     const validate = createPageSchema.safeParse(req.body)
@@ -33,21 +32,6 @@ export async function createPage(req: Request, res: Response) {
 
         const domain = `${project_name}.cloudisy.top`
 
-        await axios.post(
-            `${CADDY_ADMIN}/config/apps/http/servers/srv0/routes`,
-            {
-                match: [{ host: [domain] }],
-                handle: [{
-                    handler: "static_response",
-                    body: `Welcome to ${project_name} on Cloudisy!`
-                }],
-                terminal: true
-            },
-            {
-                headers: { 'Content-Type': 'application/json' }
-            }
-        )
-
         const insert = await db.insert(pages).values({
             tenant_name,
             plan,
@@ -56,6 +40,13 @@ export async function createPage(req: Request, res: Response) {
         }).returning()
 
         await createPageBucket(project_name)
+        addCustomDomain({
+            tenantId: insert[0]?.id!,
+            projectName: insert[0]?.project_name!,
+            customDomain: insert[0]?.domain!
+        })
+
+
 
         return res.json(insert[0])
 

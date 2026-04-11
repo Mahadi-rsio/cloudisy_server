@@ -4,7 +4,7 @@ fetch("http://localhost:3000/create_page", {
         "Content-Type": "application/json",
     },
     body: JSON.stringify({
-        project_name: "hello",
+        project_name: "app",
         plan: "free",
         tenant_name: "mahade",
     }),

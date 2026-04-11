@@ -1,7 +1,11 @@
 {
     auto_https off
-    admin localhost:2019
+    admin localhost:2019 {
+        origins localhost:2019 127.0.0.1:2019
+    }
 }
+
+
 
 (spa) {
     encode gzip
