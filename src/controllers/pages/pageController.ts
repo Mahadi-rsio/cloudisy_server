@@ -5,6 +5,7 @@ import { pages } from '../../../lib/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import axios from 'axios'
+import { createPageBucket } from './minio.js'
 
 const createPageSchema = z.object({
     tenant_name: z.string().min(1),
@@ -24,9 +25,11 @@ export async function createPage(req: Request, res: Response) {
 
     try {
         const existing = await db.select().from(pages).where(eq(pages.project_name, project_name))
+
         if (existing.length > 0) {
             project_name = `${project_name}-${nanoid(4)}`.toLowerCase()
         }
+
 
         const domain = `${project_name}.cloudisy.top`
 
@@ -51,6 +54,8 @@ export async function createPage(req: Request, res: Response) {
             project_name,
             domain
         }).returning()
+
+        await createPageBucket(project_name)
 
         return res.json(insert[0])
 

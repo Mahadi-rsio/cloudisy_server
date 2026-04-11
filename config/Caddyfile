@@ -1,9 +1,35 @@
 {
-  auto_https off
-  admin localhost:2019
+    auto_https off
+    admin localhost:2019
+}
+
+:5173 {
+    encode gzip
+
+    handle / {
+        rewrite * /app/index.html
+        reverse_proxy localhost:9000 {
+            header_up Host "localhost:9000"
+        }
+    }
+
+    handle {
+        rewrite * /app{path}
+
+        reverse_proxy localhost:9000 {
+            header_up Host "localhost:9000"
+
+            @notfound status 403 404
+            handle_response @notfound {
+                rewrite * /app/index.html
+                reverse_proxy localhost:9000 {
+                    header_up Host "localhost:9000"
+                }
+            }
+        }
+    }
 }
 
 :8080 {
     reverse_proxy localhost:3000
 }
-
