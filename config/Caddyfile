@@ -3,31 +3,39 @@
     admin localhost:2019
 }
 
-:5173 {
+(spa) {
     encode gzip
 
     handle / {
-        rewrite * /app/index.html
-        reverse_proxy localhost:9000 {
-            header_up Host "localhost:9000"
+        rewrite * /{args[0]}/index.html
+        reverse_proxy {args[1]} {
+            header_up Host "{args[1]}"
         }
     }
 
     handle {
-        rewrite * /app{path}
+        rewrite * /{args[0]}{path}
 
-        reverse_proxy localhost:9000 {
-            header_up Host "localhost:9000"
+        reverse_proxy {args[1]} {
+            header_up Host "{args[1]}"
 
             @notfound status 403 404
             handle_response @notfound {
-                rewrite * /app/index.html
-                reverse_proxy localhost:9000 {
-                    header_up Host "localhost:9000"
+                rewrite * /{args[0]}/index.html
+                reverse_proxy {args[1]} {
+                    header_up Host "{args[1]}"
                 }
             }
         }
     }
+}
+
+:5173 {
+    import spa app localhost:9000
+}
+
+:5174 {
+    import spa app localhost:9000
 }
 
 :8080 {
