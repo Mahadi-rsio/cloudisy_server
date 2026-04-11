@@ -1,10 +1,9 @@
 {
     auto_https off
-    admin localhost:2019 {
-        origins localhost:2019 127.0.0.1:2019
+    admin 0.0.0.0:2019 {
+        origins caddy_server:2019 express_app:2019 localhost 127.0.0.1:2019
     }
 }
-
 
 
 (spa) {
@@ -34,14 +33,14 @@
     }
 }
 
-:5173 {
-    import spa app localhost:9000
+app.localhost:80 {
+   respond "hello"
 }
 
 :5174 {
     import spa app localhost:9000
 }
 
-:8080 {
-    reverse_proxy localhost:3000
+api.localhost:80 {
+    reverse_proxy app:3000
 }

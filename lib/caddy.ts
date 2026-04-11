@@ -1,12 +1,10 @@
-
-
 export async function addCustomDomain({ tenantId, projectName, customDomain }: {
     tenantId: string,
     projectName: string,
     customDomain: string
 }, {
     minioHost = "localhost:9000",
-    caddyAdmin = "http://localhost:2019"
+    caddyAdmin = "http://caddy_server:2019"
 } = {}) {
     const bucketName = projectName
     const routeId = `${tenantId}-${projectName}-custom`
@@ -66,7 +64,8 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "Origin": "http://localhost:2019"
+            "Origin": "http://caddy_server:2019"
+
         },
         body: JSON.stringify(route)
     })
