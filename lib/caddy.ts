@@ -3,7 +3,7 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
     projectName: string,
     customDomain: string
 }, {
-    minioHost = "localhost:9000",
+    minioHost = "minio_server:9000",
     caddyAdmin = "http://caddy_server:2019"
 } = {}) {
     const bucketName = projectName
@@ -80,7 +80,7 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
         tenantId,
         projectName,
         customDomain,
-        url: `https://${customDomain}`
+        url: `http://${customDomain}`
     }
 }
 
