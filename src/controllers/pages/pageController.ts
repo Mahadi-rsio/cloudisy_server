@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createPageBucket } from './minio.js'
 import { addCustomDomain } from './../../../lib/caddy.js'
+import { log } from 'node:console'
 
 const createPageSchema = z.object({
     tenant_name: z.string().min(1),
@@ -13,6 +14,7 @@ const createPageSchema = z.object({
     project_name: z.string().min(1)
 })
 
+const TOP_LEVEL_DOMAIN = 'localhost:80'
 
 export async function createPage(req: Request, res: Response) {
     const validate = createPageSchema.safeParse(req.body)
@@ -30,7 +32,8 @@ export async function createPage(req: Request, res: Response) {
         }
 
 
-        const domain = `${project_name}.cloudisy.top`
+
+        const domain = `${project_name}.${TOP_LEVEL_DOMAIN}`
 
         const insert = await db.insert(pages).values({
             tenant_name,
@@ -40,11 +43,14 @@ export async function createPage(req: Request, res: Response) {
         }).returning()
 
         await createPageBucket(project_name)
+
         addCustomDomain({
             tenantId: insert[0]?.id!,
             projectName: insert[0]?.project_name!,
             customDomain: insert[0]?.domain!
         })
+
+        log(`Added Domain ${insert[0]?.domain}`)
 
 
 
