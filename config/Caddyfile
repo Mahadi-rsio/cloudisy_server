@@ -37,9 +37,6 @@ app.localhost:80 {
    respond "hello"
 }
 
-:5174 {
-    import spa app localhost:9000
-}
 
 api.localhost:80 {
     reverse_proxy app:3000

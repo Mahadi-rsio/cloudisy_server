@@ -23,7 +23,7 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
                             {
                                 handler: "reverse_proxy",
                                 upstreams: [{ dial: minioHost }],
-                                headers: { request: { set: { Host: [minioHost] } } }
+                                //headers: { request: { set: { Host: [minioHost] } } }
                             }
                         ]
                     },
@@ -32,7 +32,7 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
                             {
                                 handler: "reverse_proxy",
                                 upstreams: [{ dial: minioHost }],
-                                headers: { request: { set: { Host: [minioHost] } } },
+                                //headers: { request: { set: { Host: [minioHost] } } },
                                 rewrite: { uri: `/${bucketName}{http.request.uri.path}` },
                                 handle_response: [
                                     {
@@ -44,7 +44,7 @@ export async function addCustomDomain({ tenantId, projectName, customDomain }: {
                                                     {
                                                         handler: "reverse_proxy",
                                                         upstreams: [{ dial: minioHost }],
-                                                        headers: { request: { set: { Host: [minioHost] } } }
+                                                      //headers: { request: { set: { Host: [minioHost] } } }
                                                     }
                                                 ]
                                             }

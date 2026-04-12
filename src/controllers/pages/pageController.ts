@@ -14,7 +14,7 @@ const createPageSchema = z.object({
     project_name: z.string().min(1)
 })
 
-const TOP_LEVEL_DOMAIN = 'localhost:80'
+const TOP_LEVEL_DOMAIN = 'localhost'
 
 export async function createPage(req: Request, res: Response) {
     const validate = createPageSchema.safeParse(req.body)

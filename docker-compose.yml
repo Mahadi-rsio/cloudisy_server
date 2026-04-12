@@ -56,7 +56,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9001:9001" # only expose console
+      - "9000:9000" # only expose console
     volumes:
       - miniodata:/data
     restart: always
