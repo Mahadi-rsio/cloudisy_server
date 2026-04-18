@@ -3,6 +3,10 @@
     admin 0.0.0.0:2019 {
         origins caddy_server:2019 express_app:2019 localhost 127.0.0.1:2019
     }
+    
+    on_demand_tls {
+        ask http://app:3000/v1/check-domain
+    }
 }
 
 (spa) {
@@ -28,8 +32,12 @@
     }
 }
 
-app.localhost:80 {
+app.cloudisy.top {
     respond "hello"
+}
+
+api.cloudisy.top {
+    reverse_proxy app:3000
 }
 
 api.localhost:80 {
@@ -37,6 +45,7 @@ api.localhost:80 {
 }
 
 :80 {
+    respond "handle request failed"
     log {
         output file /var/log/caddy/access.log {
             roll_size 50mb
