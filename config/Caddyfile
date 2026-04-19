@@ -1,12 +1,9 @@
 {
-    auto_https off
+    {$AUTO_HTTPS:auto_https off}
     admin 0.0.0.0:2019 {
         origins caddy_server:2019 express_app:2019 localhost 127.0.0.1:2019
     }
-    
-    on_demand_tls {
-        ask http://app:3000/v1/check-domain
-    }
+    {$ON_DEMAND_TLS}
 }
 
 (spa) {
@@ -32,20 +29,17 @@
     }
 }
 
-app.cloudisy.top {
-    respond "hello"
-}
+# ── API ───────────────────────────────────────────────────────────────────────
 
-api.cloudisy.top {
+api.localhost, api.{$PRODUCTION_DOMAIN:localhost} {
     reverse_proxy app:3000
 }
 
-api.localhost:80 {
-    reverse_proxy app:3000
-}
+# ── Fallback / Error handling ─────────────────────────────────────────────────
 
-:80 {
-    respond "handle request failed"
+:80, :443 {
+    respond "handle request failed" 500
+
     log {
         output file /var/log/caddy/access.log {
             roll_size 50mb

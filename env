@@ -1,0 +1,29 @@
+# ── App ───────────────────────────────────────────────────────────────────────
+NODE_ENV=production
+DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5432/mydb
+
+
+# ── Database ──────────────────────────────────────────────────────────────────
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=mydb
+DB=postgresql://postgres:postgres@db:5432/mydb
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+REDIS_URL=redis://redis:6379
+
+# ── MinIO ─────────────────────────────────────────────────────────────────────
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+MINIO_ENDPOINT=minio
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+
+# ── Caddy ─────────────────────────────────────────────────────────────────────
+PRODUCTION_DOMAIN=
+
+# Dev:   AUTO_HTTPS=auto_https off  |  ON_DEMAND_TLS=
+# Prod:  AUTO_HTTPS=               |  ON_DEMAND_TLS=on_demand_tls { ask http://app:3000/v1/check-domain }
+AUTO_HTTPS=auto_https off
+ON_DEMAND_TLS=
