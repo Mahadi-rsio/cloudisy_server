@@ -22,7 +22,7 @@ This project follows a strict stable-first workflow:
 Clone the repository and immediately switch to the stable base:
 
 ```bash
-git clone https://github.com/<user>/<repo>.git
+git clone https://github.com/Mahadi-rsio/cloudisy_server.git
 cd <repo>
 ```
 
