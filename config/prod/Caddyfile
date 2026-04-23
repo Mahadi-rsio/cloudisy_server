@@ -5,7 +5,7 @@
 
 {
     email rsioex@gmail.com
-
+    auto_https off
     admin 0.0.0.0:2019 {
         origins caddy_server:2019 express_app:2019 localhost 127.0.0.1:2019
     }
@@ -66,6 +66,9 @@ app.cloudisy.top {
     import access_log
     import block_attacks
 
+    tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin-key.pem
+
+
     respond "hello"
     # TODO: import spa app express_app:3001
 }
@@ -77,6 +80,10 @@ api.cloudisy.top {
     import security_headers
     import access_log
     import block_attacks
+
+    tls /etc/caddy/certs/cloudflare-origin.pem /etc/caddy/certs/cloudflare-origin-key.pem
+
+
 
     header Access-Control-Allow-Origin  "https://app.cloudisy.top"
     header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"

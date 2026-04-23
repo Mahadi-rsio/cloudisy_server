@@ -101,6 +101,7 @@ services:
     volumes:
       - caddy_logs:/var/log/caddy:ro
       - ./config/vector.toml:/etc/vector/vector.toml:ro
+      - ./certs:/etc/caddy/certs:ro
       - vector_data:/var/lib/vector
     depends_on:
       - caddy
