@@ -14,7 +14,9 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
     try {
         const { payload } = await jwtVerify(token!, JWKS)
-            ; (req as any).user = payload
+            ; (req as any).id = payload.id
+            ; (req as any).name = payload.name
+
         next()
     } catch (err) {
         return res.status(401).json({ error: 'Invalid or expired token' })

@@ -1,35 +1,56 @@
 import { db } from '../infrastructure/db/db.js'
 import { pages } from '../infrastructure/db/schema.js'
 import { eq } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import { createPageBucket } from '../infrastructure/storage/minio.js'
-import { addCustomDomain } from '../infrastructure/proxy/caddy.js'
+import { customAlphabet } from 'nanoid'
+import { createPageBucket, minioClient } from '../infrastructure/storage/minio.js'
+import { addCustomDomain, removeCustomDomain } from '../infrastructure/proxy/caddy.js'
 import { redis } from '../infrastructure/cache/redis.js'
 import { TOP_LEVEL_DOMAIN } from '../constants/index.js'
 import type { CreatePageInput } from '../validators/page.validator.js'
+import { log } from 'node:console'
+import { emptyBucket } from '../utils/emptyBucket.js'
 
-export async function createPage(data: CreatePageInput) {
-    let { tenant_name, plan, project_name } = data
+export async function createPage(data: CreatePageInput,
+    reqHeader: { tenant_name: string, tenant_id: string }) {
+    let { project_name } = data
+
+    if (!reqHeader.tenant_id || !reqHeader.tenant_name) {
+        return {
+            message: "token is not valid"
+        }
+    }
+
 
     const existing = await db.select().from(pages).where(eq(pages.project_name, project_name))
 
+    const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890')
+
     if (existing.length > 0) {
-        project_name = `${project_name}-${nanoid(4)}`.toLowerCase()
+        project_name = `${project_name}${nanoid(4)}`.toLowerCase()
     }
+
+
 
     const domain = `${project_name}.${TOP_LEVEL_DOMAIN}`
 
     const insert = await db.insert(pages).values({
-        tenant_name,
-        plan,
+        tenant_name: reqHeader.tenant_name,
         project_name,
-        domain
+        domain,
+        tenant_id: reqHeader.tenant_id
     }).returning()
 
-    await createPageBucket(project_name)
+    const isBucketCreated = await createPageBucket(project_name)
+
+    if (!isBucketCreated) {
+        log('Bucket not created so no route created')
+        return {
+            "message": "bucket not created and domain not added"
+        }
+    }
 
     addCustomDomain({
-        tenantId: insert[0]!.id,
+        tenantId: insert[0]!.tenant_id,
         projectName: insert[0]!.project_name,
         customDomain: insert[0]!.domain
     })
@@ -84,4 +105,49 @@ export async function getPageUsage(domain: string) {
             limit: "1GB"
         }
     }
+}
+
+
+
+export async function getListPages(tenantId: string) {
+    const result = await db.select().from(pages).where(eq(pages.tenant_id, tenantId))
+    return result
+}
+
+export async function deletePage(pageId: string, tenantId: string) {
+    // Verify ownership
+    const existing = await db.select().from(pages)
+        .where(eq(pages.id, pageId))
+        .limit(1)
+
+    if (!existing.length) {
+        return { error: 'Page not found' }
+    }
+    if (existing[0]!.tenant_id !== tenantId) {
+        return { error: 'Forbidden' }
+    }
+
+    const page = existing[0]!
+
+    // Remove Caddy route
+    await removeCustomDomain({
+        tenantId: page.tenant_id,
+        projectName: page.project_name
+    }).catch(err => console.error('Caddy route removal failed:', err))
+
+    await emptyBucket(page.project_name)
+
+    // Delete MinIO bucket
+    await minioClient.removeBucket(page.project_name)
+        .catch(err => console.error('MinIO bucket removal failed:', err))
+
+    // Clear Redis cache
+    await redis.del(`db_cache:${page.domain}`)
+    await redis.del(`requests:${page.domain}`)
+    await redis.del(`bandwidth:${page.domain}`)
+
+    // Delete from DB
+    await db.delete(pages).where(eq(pages.id, pageId))
+
+    return { success: true }
 }
