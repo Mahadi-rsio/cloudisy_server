@@ -61,7 +61,7 @@ It manages project/page provisioning, ZIP-based deployments to MinIO, dynamic Ca
 The repo contains an `env` file template. Docker Compose expects `.env`.
 
 ```bash
-cd cloudisy_server
+cd <project-directory>  # example: cloudisy_server
 cp env .env
 ```
 
@@ -76,7 +76,7 @@ Important variables used by the app:
 ## Run with Docker (recommended)
 
 ```bash
-cd cloudisy_server
+cd <project-directory>  # example: cloudisy_server
 docker compose up --build
 ```
 
@@ -103,7 +103,7 @@ You must provide PostgreSQL, Redis, MinIO, and Caddy manually and ensure hostnam
 Then:
 
 ```bash
-cd cloudisy_server
+cd <project-directory>  # example: cloudisy_server
 pnpm install
 pnpm run build
 node dist/src/server.js
@@ -161,9 +161,9 @@ JWT is verified against remote JWKS:
 - `LOGS_QUEUE`: increment Redis usage counters from access logs
 - `SYNC_QUEUE`: flush counters to PostgreSQL
 
-Sync cron is scheduled at startup from `src/server.ts` with pattern:
+Sync cron is scheduled at startup from `src/server.ts` with BullMQ's 6-field cron pattern:
 
-- `0 */2 * * * *` (every 2 minutes)
+- `0 */2 * * * *` (every 2 minutes at second `0`)
 
 ## Database and migrations
 
