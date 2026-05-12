@@ -161,7 +161,7 @@ JWT is verified against remote JWKS:
 - `LOGS_QUEUE`: increment Redis usage counters from access logs
 - `SYNC_QUEUE`: flush counters to PostgreSQL
 
-Sync cron is scheduled at startup from `src/server.ts` with BullMQ's 6-field cron pattern:
+Sync cron is scheduled at startup from `src/server.ts` with BullMQ 6-field cron syntax (`sec min hour day month dayOfWeek`):
 
 - `0 */2 * * * *` (every 2 minutes at second `0`)
 
@@ -180,7 +180,7 @@ Schema file: `src/infrastructure/db/schema.ts`
 ## Notes on usage accounting
 
 - Live counters are kept in Redis (`requests:<domain>`, `bandwidth:<domain>`)
-- Periodic sync adds counters into DB columns (`request` (singular), `bandwidth_usage`)
+- Periodic sync adds counters into DB columns (`request` column, `bandwidth_usage`)
 - Usage API combines DB totals + live Redis values
 - Redis key `requests` is plural, while DB column `request` is singular due to current schema naming
 - Treat this naming mismatch as technical debt to normalize in a future schema/key cleanup
