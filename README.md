@@ -183,11 +183,13 @@ Schema file: `src/infrastructure/db/schema.ts`
 - Periodic sync adds counters into DB columns (`request` (singular), `bandwidth_usage`)
 - Usage API combines DB totals + live Redis values
 - Redis key `requests` is plural, while DB column `request` is singular due to current schema naming
+- Treat this naming mismatch as technical debt to normalize in a future schema/key cleanup
 
 ## Development status and validation
 
 - There is currently no implemented automated test suite (`npm test` exits with placeholder error)
 - Build command is `npm run build`/`pnpm run build`
+- Current validation is manual: run the stack, call page/upload endpoints, and verify worker/log outputs
 
 ## Troubleshooting
 
