@@ -61,7 +61,7 @@ It manages project/page provisioning, ZIP-based deployments to MinIO, dynamic Ca
 The repo contains an `env` file template. Docker Compose expects `.env`.
 
 ```bash
-cd /home/runner/work/cloudisy_server/cloudisy_server
+cd <repo-directory>
 cp env .env
 ```
 
@@ -76,7 +76,7 @@ Important variables used by the app:
 ## Run with Docker (recommended)
 
 ```bash
-cd /home/runner/work/cloudisy_server/cloudisy_server
+cd <repo-directory>
 docker compose up --build
 ```
 
@@ -103,7 +103,7 @@ You must provide PostgreSQL, Redis, MinIO, and Caddy manually and ensure hostnam
 Then:
 
 ```bash
-cd /home/runner/work/cloudisy_server/cloudisy_server
+cd <repo-directory>
 pnpm install
 pnpm run build
 node dist/src/server.js
@@ -180,7 +180,7 @@ Schema file: `src/infrastructure/db/schema.ts`
 ## Notes on usage accounting
 
 - Live counters are kept in Redis (`requests:<domain>`, `bandwidth:<domain>`)
-- Periodic sync adds counters into DB columns (`request`, `bandwidth_usage`)
+- Periodic sync adds counters into DB columns (`request` (singular), `bandwidth_usage`)
 - Usage API combines DB totals + live Redis values
 
 ## Development status and validation
