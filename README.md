@@ -207,3 +207,7 @@ Schema file: `src/infrastructure/db/schema.ts`
 3. Upload ZIP via `/upload/:bucket`
 4. Check deployment and usage endpoints
 5. Delete page via `/api/pages/:id` when no longer needed
+   
+## Next implement 
+1. Site performance tracking with unlitehouse
+2. Site monitoring with umami to track peak time, bandwidth, visitor, region 
