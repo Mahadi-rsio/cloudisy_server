@@ -3,6 +3,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 RUN corepack enable
+RUN apk add --no-cache docker-cli
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
@@ -28,6 +29,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 RUN corepack enable
+RUN apk add --no-cache docker-cli
 
 COPY package.json pnpm-lock.yaml ./
 # install ONLY production dependencies (no dev deps)

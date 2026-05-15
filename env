@@ -1,7 +1,7 @@
 
 
 NODE_ENV=production
-DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5432/mydb
+DRIZZLE_CONNECTION=******localhost:5432/mydb
 
 
 
@@ -9,7 +9,7 @@ DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5432/mydb
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=mydb
-DB=postgresql://postgres:postgres@db:5432/mydb
+DB=******db:5432/mydb
 
 
 
@@ -25,4 +25,12 @@ MINIO_PORT=9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 
-
+MANAGED_DB_EXTERNAL_HOST=localhost
+MANAGED_DB_NETWORK=cloudisy_net
+MANAGED_DB_DEFAULT_IMAGE=postgres:16-alpine
+MANAGED_DB_PORT_START=15432
+MANAGED_DB_PORT_END=15462
+MANAGED_DB_MIN_RAM_MB=256
+MANAGED_DB_MAX_RAM_MB=8192
+MANAGED_DB_MIN_STORAGE_MB=1024
+MANAGED_DB_MAX_STORAGE_MB=102400

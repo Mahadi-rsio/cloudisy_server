@@ -3,11 +3,13 @@ import app from './app.js'
 import { restoreRoutes } from './infrastructure/proxy/caddy.js'
 import { queue as SyncQueue } from './queue/jobs/sync.job.js'
 import { SYNC_CRON_PATTERN } from './constants/index.js'
+import { reconcileManagedDatabases } from './services/database.service.js'
 
 app.listen(3000, async () => {
     log("server started at 3000")
 
     await restoreRoutes()
+    await reconcileManagedDatabases()
 
     await SyncQueue.add("sync-usage", {},
         {
@@ -16,5 +18,5 @@ app.listen(3000, async () => {
                 pattern: SYNC_CRON_PATTERN,
             },
         }
-    );
+    )
 })

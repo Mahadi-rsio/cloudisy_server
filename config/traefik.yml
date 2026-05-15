@@ -1,0 +1,72 @@
+api:
+  dashboard: true
+  insecure: true
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+entryPoints:
+  pg15432:
+    address: ":15432"
+  pg15433:
+    address: ":15433"
+  pg15434:
+    address: ":15434"
+  pg15435:
+    address: ":15435"
+  pg15436:
+    address: ":15436"
+  pg15437:
+    address: ":15437"
+  pg15438:
+    address: ":15438"
+  pg15439:
+    address: ":15439"
+  pg15440:
+    address: ":15440"
+  pg15441:
+    address: ":15441"
+  pg15442:
+    address: ":15442"
+  pg15443:
+    address: ":15443"
+  pg15444:
+    address: ":15444"
+  pg15445:
+    address: ":15445"
+  pg15446:
+    address: ":15446"
+  pg15447:
+    address: ":15447"
+  pg15448:
+    address: ":15448"
+  pg15449:
+    address: ":15449"
+  pg15450:
+    address: ":15450"
+  pg15451:
+    address: ":15451"
+  pg15452:
+    address: ":15452"
+  pg15453:
+    address: ":15453"
+  pg15454:
+    address: ":15454"
+  pg15455:
+    address: ":15455"
+  pg15456:
+    address: ":15456"
+  pg15457:
+    address: ":15457"
+  pg15458:
+    address: ":15458"
+  pg15459:
+    address: ":15459"
+  pg15460:
+    address: ":15460"
+  pg15461:
+    address: ":15461"
+  pg15462:
+    address: ":15462"

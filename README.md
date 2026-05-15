@@ -20,6 +20,7 @@ It manages project/page provisioning, ZIP-based deployments to MinIO, dynamic Ca
 - Redis + BullMQ
 - MinIO (S3-compatible storage)
 - Caddy (reverse proxy + dynamic route admin API)
+- Traefik v3 (TCP proxy for managed PostgreSQL)
 - Vector (log shipping)
 
 ## Architecture (high level)
@@ -72,6 +73,10 @@ Important variables used by the app:
 - `REDIS_URL` - Redis URL for direct Redis client
 - `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `MANAGED_DB_EXTERNAL_HOST`, `MANAGED_DB_NETWORK`, `MANAGED_DB_DEFAULT_IMAGE`
+- `MANAGED_DB_PORT_START`, `MANAGED_DB_PORT_END`
+- `MANAGED_DB_MIN_RAM_MB`, `MANAGED_DB_MAX_RAM_MB`
+- `MANAGED_DB_MIN_STORAGE_MB`, `MANAGED_DB_MAX_STORAGE_MB`
 
 ## Run with Docker (recommended)
 
@@ -88,6 +93,7 @@ Services started:
 - `redis`
 - `minio`
 - `caddy` (ports `80`, `443`, admin `2019`)
+- `traefik` (dashboard `8080`, PostgreSQL TCP ports `15432-15462`)
 - `vector`
 
 Useful URLs:
@@ -95,6 +101,7 @@ Useful URLs:
 - API direct: `http://localhost:3000`
 - API via Caddy: `http://api.localhost`
 - Caddy admin: `http://localhost:2019`
+- Traefik dashboard: `http://localhost:8080`
 - MinIO API: `http://localhost:9000`
 
 ## Run without Docker (advanced)
@@ -144,6 +151,26 @@ JWT is verified against remote JWKS:
 - `GET /api/pages` (auth)
 - `GET /api/pages/usage/:domain` (auth)
 - `DELETE /api/pages/:id` (auth)
+
+### Managed PostgreSQL
+
+- `POST /api/databases` (auth)
+  Body:
+  ```json
+  { "user_name": "appuser", "database_name": "appdb", "storage": 2048, "ram": 512 }
+  ```
+  - `storage` and `ram` are in MB
+  - Returns external URL with `sslmode=disable`
+- `GET /api/databases` (auth)
+- `GET /api/databases/:id` (auth)
+- `PATCH /api/databases/:id` (auth)
+  - v1 supports RAM update only
+- `DELETE /api/databases/:id` (auth)
+
+Connection behavior:
+- External connection URLs are generated as `postgresql://...?...sslmode=disable`
+- Routing is handled by Traefik TCP labels and dedicated external ports
+- Hostname-based TCP routing is not enabled while SSL is disabled
 
 ### Uploads
 

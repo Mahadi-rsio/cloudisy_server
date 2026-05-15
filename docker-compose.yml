@@ -11,9 +11,13 @@ services:
       - db
       - minio
       - redis
+      - traefik
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cloudisy_net
 
   upload_worker:
     build: .
@@ -26,6 +30,8 @@ services:
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+    networks:
+      - cloudisy_net
 
   log_worker:
     build: .
@@ -36,6 +42,8 @@ services:
       - redis
       - db
     restart: unless-stopped
+    networks:
+      - cloudisy_net
 
   sync_worker:
     build: .
@@ -46,6 +54,8 @@ services:
       - redis
       - db
     restart: unless-stopped
+    networks:
+      - cloudisy_net
 
   caddy:
     image: caddy:2-alpine
@@ -63,6 +73,23 @@ services:
     depends_on:
       - app
     restart: unless-stopped
+    networks:
+      - cloudisy_net
+
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik_server
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "8080:8080"
+      - "15432-15462:15432-15462"
+    volumes:
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - cloudisy_net
 
   db:
     image: postgres:16-alpine
@@ -73,6 +100,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
+    networks:
+      - cloudisy_net
 
   minio:
     image: minio/minio
@@ -84,6 +113,8 @@ services:
     volumes:
       - miniodata:/data
     restart: always
+    networks:
+      - cloudisy_net
 
   redis:
     image: redis:7-alpine
@@ -92,6 +123,8 @@ services:
     expose:
       - "6379"
     restart: unless-stopped
+    networks:
+      - cloudisy_net
 
   vector:
     image: timberio/vector:0.38.0-alpine
@@ -106,6 +139,8 @@ services:
       - caddy
       - app
     restart: unless-stopped
+    networks:
+      - cloudisy_net
 
 volumes:
   pgdata:
@@ -115,3 +150,7 @@ volumes:
   vector_data:
   temp_zips:
   caddy_logs:
+
+networks:
+  cloudisy_net:
+    name: cloudisy_net
