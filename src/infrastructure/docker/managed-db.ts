@@ -48,7 +48,6 @@ export async function createManagedPostgresContainer(args: CreateManagedDbContai
         '--label', `traefik.tcp.routers.${args.routerName}.entrypoints=pg${args.externalPort}`,
         '--label', `traefik.tcp.routers.${args.routerName}.rule=HostSNI(\`*\`)`,
         '--label', `traefik.tcp.routers.${args.routerName}.service=${args.serviceName}`,
-        '--label', `traefik.tcp.services.${args.serviceName}.loadbalancer.server.port=5432`,
         args.image
     ]
 
