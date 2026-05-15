@@ -57,6 +57,22 @@ services:
     networks:
       - cloudisy_net
 
+
+  database_worker:
+    build: .
+    container_name: database_w
+    env_file: .env
+    command: ["node", "dist/src/queue/workers/database.worker.js"]
+    depends_on:
+      - redis
+      - db
+      - traefik
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cloudisy_net
+
   caddy:
     image: caddy:2-alpine
     container_name: caddy_server

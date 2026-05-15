@@ -16,6 +16,7 @@ import {
     MANAGED_DB_PORT_START
 } from '../constants/index.js'
 import type { CreateManagedDatabaseInput, UpdateManagedDatabaseInput } from '../validators/database.validator.js'
+import { queue as DatabaseQueue } from '../queue/jobs/database.job.js'
 
 function sanitizeName(value: string) {
     return value.toLowerCase().replace(/[^a-z0-9_]/g, '_')
@@ -33,6 +34,14 @@ function buildConnectionUrl({ user, password, host, port, dbName }: {
     dbName: string
 }) {
     return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(dbName)}?sslmode=disable`
+}
+
+function deriveTraefikNames(containerName: string) {
+    const seed = containerName.replace(/^managed-pg-/, '')
+    return {
+        routerName: `managedpg${seed}`,
+        serviceName: `managedpgsvc${seed}`
+    }
 }
 
 async function allocatePort() {
@@ -68,6 +77,14 @@ function toApiModel(record: typeof managedDatabases.$inferSelect) {
     }
 }
 
+async function getManagedDatabaseRecord(id: string) {
+    const rows = await db.select().from(managedDatabases)
+        .where(eq(managedDatabases.id, id))
+        .limit(1)
+
+    return rows[0] || null
+}
+
 export async function createManagedDatabase(data: CreateManagedDatabaseInput, reqHeader: { tenant_name: string, tenant_id: string }) {
     if (!reqHeader.tenant_id || !reqHeader.tenant_name) {
         return { error: 'token is not valid' }
@@ -95,8 +112,6 @@ export async function createManagedDatabase(data: CreateManagedDatabaseInput, re
     const seed = randomBytes(6).toString('hex')
     const containerName = `managed-pg-${seed}`
     const volumeName = `managed-pg-vol-${seed}`
-    const routerName = `managedpg${seed}`
-    const serviceName = `managedpgsvc${seed}`
 
     const externalUrl = buildConnectionUrl({
         user: dbUser,
@@ -126,42 +141,18 @@ export async function createManagedDatabase(data: CreateManagedDatabaseInput, re
 
     const record = inserted[0]!
 
-    try {
-        const containerId = await createManagedPostgresContainer({
-            containerName,
-            volumeName,
-            dbName,
-            dbUser,
-            dbPassword: password,
-            ramMb: data.ram,
-            externalPort,
-            networkName: MANAGED_DB_NETWORK,
-            image: MANAGED_DB_DEFAULT_IMAGE,
-            routerName,
-            serviceName
-        })
+    const job = await DatabaseQueue.add('db-create', {
+        action: 'create',
+        databaseId: record.id,
+        tenantId: reqHeader.tenant_id
+    }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 }
+    })
 
-        const updated = await db.update(managedDatabases)
-            .set({
-                container_id: containerId,
-                status: 'running',
-                updatedAt: new Date()
-            })
-            .where(eq(managedDatabases.id, record.id))
-            .returning()
-
-        return toApiModel(updated[0]!)
-    } catch (error) {
-        await removeManagedPostgresContainer(containerName, volumeName).catch(() => {})
-
-        await db.update(managedDatabases)
-            .set({
-                status: 'failed',
-                updatedAt: new Date()
-            })
-            .where(eq(managedDatabases.id, record.id))
-
-        throw error
+    return {
+        ...toApiModel(record),
+        operation_job_id: job.id
     }
 }
 
@@ -218,25 +209,25 @@ export async function updateManagedDatabase(id: string, tenantId: string, patch:
         .set({ status: 'updating', updatedAt: new Date() })
         .where(eq(managedDatabases.id, id))
 
-    try {
-        await updateManagedPostgresRam(current.container_name, patch.ram)
+    const job = await DatabaseQueue.add('db-update-ram', {
+        action: 'update_ram',
+        databaseId: id,
+        tenantId,
+        ram: patch.ram
+    }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 }
+    })
 
-        const updated = await db.update(managedDatabases)
-            .set({
-                ram_mb: patch.ram,
-                status: 'running',
-                updatedAt: new Date()
-            })
-            .where(eq(managedDatabases.id, id))
-            .returning()
+    const refreshedRows = await db.select().from(managedDatabases)
+        .where(eq(managedDatabases.id, id))
+        .limit(1)
 
-        return toApiModel(updated[0]!)
-    } catch (error) {
-        await db.update(managedDatabases)
-            .set({ status: 'failed', updatedAt: new Date() })
-            .where(eq(managedDatabases.id, id))
+    const refreshed = refreshedRows[0]!
 
-        throw error
+    return {
+        ...toApiModel(refreshed),
+        operation_job_id: job.id
     }
 }
 
@@ -253,19 +244,120 @@ export async function deleteManagedDatabase(id: string, tenantId: string) {
         return { error: 'Managed database not found' }
     }
 
-    const current = rows[0]!
-
     await db.update(managedDatabases)
         .set({ status: 'deleting', updatedAt: new Date() })
-        .where(eq(managedDatabases.id, current.id))
+        .where(eq(managedDatabases.id, id))
 
-    await removeManagedPostgresContainer(current.container_name, current.volume_name)
+    const job = await DatabaseQueue.add('db-delete', {
+        action: 'delete',
+        databaseId: id,
+        tenantId
+    }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 }
+    })
 
-    await db.update(managedDatabases)
-        .set({ status: 'deleted', updatedAt: new Date() })
-        .where(eq(managedDatabases.id, current.id))
+    return { success: true, id, status: 'deleting', operation_job_id: job.id }
+}
 
-    return { success: true, id: current.id }
+export async function getManagedDatabaseOperationStatus(jobId: string, tenantId: string) {
+    const job = await DatabaseQueue.getJob(jobId)
+    if (!job) {
+        return { error: 'Job not found' }
+    }
+
+    if (job.data.tenantId !== tenantId) {
+        return { error: 'Forbidden' }
+    }
+
+    const state = await job.getState()
+
+    return {
+        jobId: job.id,
+        databaseId: job.data.databaseId,
+        action: job.data.action,
+        state,
+        failedReason: job.failedReason || null,
+        result: job.returnvalue || null
+    }
+}
+
+export async function processManagedDatabaseCreate(databaseId: string) {
+    const record = await getManagedDatabaseRecord(databaseId)
+    if (!record || record.status === 'deleted') return
+
+    const { routerName, serviceName } = deriveTraefikNames(record.container_name)
+
+    try {
+        const containerId = await createManagedPostgresContainer({
+            containerName: record.container_name,
+            volumeName: record.volume_name,
+            dbName: record.db_name,
+            dbUser: record.db_user,
+            dbPassword: record.db_password,
+            ramMb: record.ram_mb,
+            externalPort: record.external_port,
+            networkName: record.network_name,
+            image: MANAGED_DB_DEFAULT_IMAGE,
+            routerName,
+            serviceName
+        })
+
+        await db.update(managedDatabases)
+            .set({
+                container_id: containerId,
+                status: 'running',
+                updatedAt: new Date()
+            })
+            .where(eq(managedDatabases.id, record.id))
+    } catch (error) {
+        await db.update(managedDatabases)
+            .set({ status: 'failed', updatedAt: new Date() })
+            .where(eq(managedDatabases.id, record.id))
+        throw error
+    }
+}
+
+export async function processManagedDatabaseRamUpdate(databaseId: string, ramMb: number) {
+    const record = await getManagedDatabaseRecord(databaseId)
+    if (!record || record.status === 'deleted') return
+
+    try {
+        await updateManagedPostgresRam(record.container_name, ramMb)
+
+        await db.update(managedDatabases)
+            .set({
+                ram_mb: ramMb,
+                status: 'running',
+                updatedAt: new Date()
+            })
+            .where(eq(managedDatabases.id, record.id))
+    } catch (error) {
+        await db.update(managedDatabases)
+            .set({ status: 'failed', updatedAt: new Date() })
+            .where(eq(managedDatabases.id, record.id))
+
+        throw error
+    }
+}
+
+export async function processManagedDatabaseDelete(databaseId: string) {
+    const record = await getManagedDatabaseRecord(databaseId)
+    if (!record || record.status === 'deleted') return
+
+    try {
+        await removeManagedPostgresContainer(record.container_name, record.volume_name)
+
+        await db.update(managedDatabases)
+            .set({ status: 'deleted', updatedAt: new Date() })
+            .where(eq(managedDatabases.id, record.id))
+    } catch (error) {
+        await db.update(managedDatabases)
+            .set({ status: 'failed', updatedAt: new Date() })
+            .where(eq(managedDatabases.id, record.id))
+
+        throw error
+    }
 }
 
 export async function reconcileManagedDatabases() {

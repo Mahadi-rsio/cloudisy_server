@@ -4,6 +4,7 @@ import {
     createManagedDatabaseHandler,
     deleteManagedDatabaseHandler,
     getManagedDatabaseByIdHandler,
+    getManagedDatabaseOperationStatusHandler,
     listManagedDatabasesHandler,
     updateManagedDatabaseHandler
 } from '../controllers/database.controller.js'
@@ -15,5 +16,6 @@ router.get('/api/databases', authMiddleware, listManagedDatabasesHandler)
 router.get('/api/databases/:id', authMiddleware, getManagedDatabaseByIdHandler)
 router.patch('/api/databases/:id', authMiddleware, updateManagedDatabaseHandler)
 router.delete('/api/databases/:id', authMiddleware, deleteManagedDatabaseHandler)
+router.get('/api/databases/operations/:jobId', authMiddleware, getManagedDatabaseOperationStatusHandler)
 
 export default router

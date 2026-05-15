@@ -3,6 +3,7 @@ import {
     createManagedDatabase,
     deleteManagedDatabase,
     getManagedDatabaseById,
+    getManagedDatabaseOperationStatus,
     listManagedDatabases,
     updateManagedDatabase
 } from '../services/database.service.js'
@@ -24,7 +25,7 @@ export async function createManagedDatabaseHandler(req: Request, res: Response) 
             return res.status(400).json(result)
         }
 
-        return res.status(201).json(result)
+        return res.status(202).json(result)
     } catch (error) {
         console.error(error)
         return res.status(500).json({ error: 'Failed to create managed database' })
@@ -82,7 +83,7 @@ export async function updateManagedDatabaseHandler(req: Request, res: Response) 
             return res.status(status).json(result)
         }
 
-        return res.json(result)
+        return res.status(202).json(result)
     } catch (error) {
         console.error(error)
         return res.status(500).json({ error: 'Failed to update managed database' })
@@ -104,9 +105,32 @@ export async function deleteManagedDatabaseHandler(req: Request, res: Response) 
             return res.status(status).json(result)
         }
 
-        return res.json(result)
+        return res.status(202).json(result)
     } catch (error) {
         console.error(error)
         return res.status(500).json({ error: 'Failed to delete managed database' })
+    }
+}
+
+export async function getManagedDatabaseOperationStatusHandler(req: Request, res: Response) {
+    const tenantId = (req as any).id as string | undefined
+    const jobId = req.params['jobId'] as string | undefined
+
+    if (!tenantId) return res.status(401).json({ error: 'Unauthorized' })
+    if (!jobId) return res.status(400).json({ error: 'Job ID is required' })
+
+    try {
+        const result = await getManagedDatabaseOperationStatus(jobId, tenantId)
+
+        if ('error' in result) {
+            if (result.error === 'Job not found') return res.status(404).json(result)
+            if (result.error === 'Forbidden') return res.status(403).json(result)
+            return res.status(400).json(result)
+        }
+
+        return res.json(result)
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({ error: 'Failed to fetch managed database operation status' })
     }
 }

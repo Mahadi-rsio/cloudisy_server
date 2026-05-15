@@ -160,12 +160,16 @@ JWT is verified against remote JWKS:
   { "user_name": "appuser", "database_name": "appdb", "storage": 2048, "ram": 512 }
   ```
   - `storage` and `ram` are in MB
-  - Returns external URL with `sslmode=disable`
+  - Queues async container provisioning and returns `202` with `operation_job_id`
 - `GET /api/databases` (auth)
 - `GET /api/databases/:id` (auth)
 - `PATCH /api/databases/:id` (auth)
   - v1 supports RAM update only
+  - Queues async container update and returns `202`
 - `DELETE /api/databases/:id` (auth)
+  - Queues async delete and returns `202`
+- `GET /api/databases/operations/:jobId` (auth)
+  - Fetch async operation/job status
 
 Connection behavior:
 - External connection URLs are generated as `postgresql://...?...sslmode=disable`
@@ -187,6 +191,7 @@ Connection behavior:
 - `UPLOAD_QUEUE`: unzip + upload files to MinIO
 - `LOGS_QUEUE`: increment Redis usage counters from access logs
 - `SYNC_QUEUE`: flush counters to PostgreSQL
+- `DATABASE_QUEUE`: create/update/delete managed PostgreSQL containers asynchronously
 
 Sync cron is scheduled at startup from `src/server.ts` with BullMQ 6-field cron syntax (`sec min hour day month dayOfWeek`):
 
