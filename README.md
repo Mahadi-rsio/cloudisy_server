@@ -72,6 +72,10 @@ Important variables used by the app:
 - `REDIS_URL` - Redis URL for direct Redis client
 - `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `DOCKER_SOCKET_PATH`, `DOCKER_NETWORK`, `TENANT_DB_IMAGE`, `TENANT_DB_PORT`
+- `TENANT_DB_DEFAULT_RAM_MB`, `TENANT_DB_DEFAULT_CPU_SHARES`
+- `TENANT_DB_MIN_RAM_MB`, `TENANT_DB_MAX_RAM_MB`, `TENANT_DB_MIN_STORAGE_MB`, `TENANT_DB_MAX_STORAGE_MB`
+- `SUPAVISOR_API_URL`, `SUPAVISOR_API_TOKEN`
 
 ## Run with Docker (recommended)
 
@@ -83,7 +87,7 @@ docker compose up --build
 Services started:
 
 - `app` (Express API) on `3000`
-- `upload_worker`, `log_worker`, `sync_worker`
+- `upload_worker`, `log_worker`, `sync_worker`, `database_worker`
 - `db` (PostgreSQL)
 - `redis`
 - `minio`
@@ -115,6 +119,7 @@ Run workers in separate processes:
 node dist/src/queue/workers/upload.worker.js
 node dist/src/queue/workers/log.worker.js
 node dist/src/queue/workers/sync.worker.js
+node dist/src/queue/workers/database.worker.js
 ```
 
 ## Authentication
@@ -155,11 +160,22 @@ JWT is verified against remote JWKS:
 
 - `POST /internal/log` (internal use by Vector)
 
+### Tenant database lifecycle
+
+- `POST /api/tenant-db` (auth) enqueue create tenant DB
+- `GET /api/tenant-db` (auth) list tenant DB records
+- `GET /api/tenant-db/:id` (auth) read tenant DB status/metadata
+- `PATCH /api/tenant-db/:id` (auth) enqueue config update
+- `DELETE /api/tenant-db/:id` (auth) enqueue delete
+- `POST /api/tenant-db/:id/rotate-credentials` (auth) enqueue credentials rotation
+- `GET /api/tenant-db/jobs/:jobId` (auth) queue + operation log status
+
 ## Queue/workers behavior
 
 - `UPLOAD_QUEUE`: unzip + upload files to MinIO
 - `LOGS_QUEUE`: increment Redis usage counters from access logs
 - `SYNC_QUEUE`: flush counters to PostgreSQL
+- `DATABASE_QUEUE`: create/update/delete/rotate tenant PostgreSQL containers via worker orchestration + Supavisor registration
 
 Sync cron is scheduled at startup from `src/server.ts` with BullMQ 6-field cron syntax (`sec min hour day month dayOfWeek`):
 
@@ -199,6 +215,7 @@ Schema file: `src/infrastructure/db/schema.ts`
   - files uploaded under `dist/`
   - Caddy admin API reachable (`:2019`)
 - If usage is not updating, check `vector`, `log_worker`, and `sync_worker` logs
+- If tenant DB jobs fail, check `database_worker` logs and `tenant_database_jobs` table state/stage
 
 ## Quick workflow summary
 
