@@ -14,6 +14,8 @@ services:
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+    networks:
+      - cloudisy_network
 
   upload_worker:
     build: .
@@ -26,6 +28,8 @@ services:
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+    networks:
+      - cloudisy_network
 
   log_worker:
     build: .
@@ -36,6 +40,8 @@ services:
       - redis
       - db
     restart: unless-stopped
+    networks:
+      - cloudisy_network
 
   sync_worker:
     build: .
@@ -46,6 +52,8 @@ services:
       - redis
       - db
     restart: unless-stopped
+    networks:
+      - cloudisy_network
 
   database_worker:
     build: .
@@ -56,6 +64,10 @@ services:
       - redis
       - db
     restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cloudisy_network
 
   caddy:
     image: caddy:2-alpine
@@ -73,6 +85,8 @@ services:
     depends_on:
       - app
     restart: unless-stopped
+    networks:
+      - cloudisy_network
 
   db:
     image: postgres:16-alpine
@@ -89,6 +103,8 @@ services:
       retries: 5
       start_period: 10s
     restart: always
+    networks:
+      - cloudisy_network
 
   minio:
     image: minio/minio
@@ -100,6 +116,8 @@ services:
     volumes:
       - miniodata:/data
     restart: always
+    networks:
+      - cloudisy_network
 
   redis:
     image: redis:7-alpine
@@ -108,9 +126,17 @@ services:
     expose:
       - "6379"
     restart: unless-stopped
+    networks:
+      - cloudisy_network
 
   supavisor:
     image: supabase/supavisor:2.7.4
+    container_name: supavisor
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        /app/bin/supavisor eval "Supavisor.Release.migrate()"
+        /app/bin/supavisor start
     ports:
       - "5432:5432"
       - "6543:6543"
@@ -131,7 +157,8 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-
+    networks:
+      - cloudisy_network
 
   vector:
     image: timberio/vector:0.38.0-alpine
@@ -146,6 +173,13 @@ services:
       - caddy
       - app
     restart: unless-stopped
+    networks:
+      - cloudisy_network
+
+networks:
+  cloudisy_network:
+    driver: bridge
+    name: cloudisy_network
 
 volumes:
   pgdata:

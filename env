@@ -1,7 +1,7 @@
 
 
 NODE_ENV=production
-DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5432/mydb
+DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5433/mydb
 
 
 
@@ -9,7 +9,7 @@ DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5432/mydb
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=mydb
-DB=postgresql://postgres:postgres@db:5432/mydb
+DB=postgresql://postgres:postgres@db:5433/mydb
 
 
 
@@ -25,4 +25,7 @@ MINIO_PORT=9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 
-
+DOCKER_NETWORK=cloudisy_network
+SUPAVISOR_API_URL=http://supavisor:4000
+SUPAVISOR_API_TOKEN=supersecretapikey"
+SUPAVISOR_PUBLIC_HOST=your-vps-ip-or-domain
