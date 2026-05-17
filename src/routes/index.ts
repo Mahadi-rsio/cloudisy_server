@@ -2,6 +2,7 @@ import { Router } from 'express'
 import pageRouter from './page.routes.js'
 import uploadRouter from './upload.routes.js'
 import logRouter from './log.routes.js'
+import databaseRouter from './database.routes.js'
 import { authMiddleware } from './../middleware/auth.middleware.js'
 
 const router = Router()
@@ -30,5 +31,6 @@ router.get('/v1/check-domain', (req, res) => {
 router.use(pageRouter)
 router.use('/upload', uploadRouter)
 router.use(logRouter)
+router.use(databaseRouter)
 
 export default router

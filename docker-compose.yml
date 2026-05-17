@@ -47,6 +47,16 @@ services:
       - db
     restart: unless-stopped
 
+  database_worker:
+    build: .
+    container_name: database_w
+    env_file: .env
+    command: ["node", "dist/src/queue/workers/database.worker.js"]
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
     container_name: caddy_server

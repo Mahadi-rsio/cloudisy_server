@@ -15,9 +15,11 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@types/dockerode": "^4.0.1",
     "axios": "^1.15.0",
     "bullmq": "^5.73.5",
     "cloudflare": "^5.2.0",
+    "dockerode": "^5.0.0",
     "dotenv": "^17.4.1",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
