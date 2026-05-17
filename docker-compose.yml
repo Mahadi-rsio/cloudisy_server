@@ -8,12 +8,38 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - db
-      - minio
-      - redis
+      migrator:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - cloudisy_network
+
+  migrator:
+    build: .
+    container_name: migrator
+    env_file: .env
+    command: >
+      sh -c "npm run gen && npm run migrate"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
     networks:
       - cloudisy_network
 
@@ -23,11 +49,25 @@ services:
     env_file: .env
     command: ["node", "dist/src/queue/workers/upload.worker.js"]
     depends_on:
-      - redis
-      - db
+      migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - temp_zips:/app/temp_zips
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
     networks:
       - cloudisy_network
 
@@ -37,9 +77,23 @@ services:
     env_file: .env
     command: ["node", "dist/src/queue/workers/log.worker.js"]
     depends_on:
-      - redis
-      - db
+      migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
     networks:
       - cloudisy_network
 
@@ -49,9 +103,23 @@ services:
     env_file: .env
     command: ["node", "dist/src/queue/workers/sync.worker.js"]
     depends_on:
-      - redis
-      - db
+      migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
     networks:
       - cloudisy_network
 
@@ -61,11 +129,25 @@ services:
     env_file: .env
     command: ["node", "dist/src/queue/workers/database.worker.js"]
     depends_on:
-      - redis
-      - db
+      migrator:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
     networks:
       - cloudisy_network
 
@@ -83,8 +165,14 @@ services:
       - caddy_config:/config
       - caddy_logs:/var/log/caddy
     depends_on:
-      - app
+      app:
+        condition: service_started
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
@@ -103,6 +191,11 @@ services:
       retries: 5
       start_period: 10s
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
@@ -110,22 +203,45 @@ services:
     image: minio/minio
     container_name: minio_server
     env_file: .env
-    command: server /data
+    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - miniodata:/data
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
   redis:
     image: redis:7-alpine
     container_name: redis
-    command: redis-server
+    command: redis-server --save 60 1 --loglevel warning
     expose:
       - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
@@ -141,11 +257,12 @@ services:
       - "5432:5432"
       - "6543:6543"
       - "4000:4000"
+    env_file: .env
     environment:
-      SECRET_KEY_BASE: "3b541285a851b9fa5e3b9e8e4b4f8e2a7c9d1f6a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8"
-      VAULT_ENC_KEY: "NJr1d2tpEzJY6pH00INDQpPFjE/gbE2y"
-      API_JWT_SECRET: "supersecretapikey"
-      METRICS_JWT_SECRET: "supermetricssecret"
+      SECRET_KEY_BASE: ${SUPAVISOR_SECRET_KEY_BASE}
+      VAULT_ENC_KEY: ${SUPAVISOR_VAULT_ENC_KEY}
+      API_JWT_SECRET: ${SUPAVISOR_API_JWT_SECRET}
+      METRICS_JWT_SECRET: ${SUPAVISOR_METRICS_JWT_SECRET}
       DATABASE_URL: "ecto://postgres:postgres@db:5432/mydb"
       CLUSTER_POSTGRES: "true"
       PORT: "4000"
@@ -157,6 +274,11 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
@@ -170,9 +292,16 @@ services:
       - ./config/vector.toml:/etc/vector/vector.toml:ro
       - vector_data:/var/lib/vector
     depends_on:
-      - caddy
-      - app
+      caddy:
+        condition: service_started
+      app:
+        condition: service_started
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - cloudisy_network
 
