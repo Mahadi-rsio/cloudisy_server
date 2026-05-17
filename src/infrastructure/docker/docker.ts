@@ -53,7 +53,10 @@ export async function createTenantPostgresContainer(cfg: TenantContainerConfig):
       CpuShares: cfg.cpuShares,
       Memory: toBytes(cfg.ramMb),
       NetworkMode: databaseProvisioningConfig.dockerNetwork,
-      Binds: [`${cfg.volumeName}:/var/lib/postgresql/data`]
+      Binds: [`${cfg.volumeName}:/var/lib/postgresql/data`],
+      RestartPolicy : {
+        Name : 'unless-stopped'
+      } 
     },
     ExposedPorts: {
       '5432/tcp': {}
