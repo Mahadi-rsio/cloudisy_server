@@ -133,7 +133,23 @@ Authorization: Bearer <jwt>
 JWT is verified against remote JWKS:
 `https://cloudisy.vercel.app/api/auth/jwks`
 
-## API endpoints
+## Database setup (project metadata + tenant DB lifecycle)
+
+Main app metadata (pages, usage, tenant DB job logs) is stored in the main PostgreSQL configured by `DB`.
+
+Run Drizzle once your DB is ready:
+
+```bash
+npm run gen   # generate migration files from schema changes
+npm run mig   # apply migrations
+npm run push  # push schema directly (alternative workflow)
+```
+
+Schema source: `src/infrastructure/db/schema.ts`
+
+Tenant databases are provisioned asynchronously through `DATABASE_QUEUE` + `database_worker` using `/api/tenant-db*` endpoints.
+
+## API endpoints summary
 
 ### Health
 
@@ -170,6 +186,158 @@ JWT is verified against remote JWKS:
 - `POST /api/tenant-db/:id/rotate-credentials` (auth) enqueue credentials rotation
 - `GET /api/tenant-db/jobs/:jobId` (auth) queue + operation log status
 
+## Create pages properly (recommended flow)
+
+1. Create the page record with `POST /api/pages/create`.
+2. Use returned `project_name` as MinIO bucket name for upload endpoint.
+3. Upload a ZIP file to `POST /upload/:bucket` using `file` form field.
+4. Poll `GET /upload/status/:jobId` until state is `completed`.
+5. Verify page list + usage with `/api/pages` and `/api/pages/usage/:domain`.
+6. Delete with `DELETE /api/pages/:id` when no longer needed.
+
+Notes:
+- `project_name` must be at least 3 characters.
+- If project name exists, server appends a random suffix.
+- Current top-level domain in code is `localhost` (`TOP_LEVEL_DOMAIN`).
+
+## Create/manage tenant databases properly
+
+Tenant DB operations are async queue jobs.
+
+1. Create DB job: `POST /api/tenant-db` with:
+   - `database_name` (regex: `^[a-zA-Z][a-zA-Z0-9_]{2,62}$`)
+   - `ram_mb` (256-8192)
+   - `storage_mb` (512-102400)
+   - `cpu_shares` (128-4096)
+   - `idempotency_key` (8-128 chars)
+2. Poll `GET /api/tenant-db/jobs/:jobId` for queue/operation state.
+3. List active tenant DBs with `GET /api/tenant-db`.
+4. Update config with `PATCH /api/tenant-db/:id` (`idempotency_key` required + at least one updatable field).
+5. Rotate credentials with `POST /api/tenant-db/:id/rotate-credentials`.
+6. Delete with `DELETE /api/tenant-db/:id` (`idempotency_key` required).
+
+Only one in-flight tenant DB operation is allowed per tenant at a time.
+
+## API usage with curl
+
+Set variables first:
+
+```bash
+export API_BASE="http://localhost:3000"
+export TOKEN="<jwt>"
+```
+
+### Health
+
+```bash
+curl -sS "$API_BASE/health" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Create page
+
+```bash
+curl -sS -X POST "$API_BASE/api/pages/create" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"project_name":"myproject"}'
+```
+
+### List pages
+
+```bash
+curl -sS "$API_BASE/api/pages" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Upload ZIP build to page bucket
+
+```bash
+curl -sS -X POST "$API_BASE/upload/myproject" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@./build.zip"
+```
+
+### Get upload job status
+
+```bash
+curl -sS "$API_BASE/upload/status/<jobId>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Get page usage by domain
+
+```bash
+curl -sS "$API_BASE/api/pages/usage/myproject.localhost" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Delete page
+
+```bash
+curl -sS -X DELETE "$API_BASE/api/pages/<pageId>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Create tenant database (async)
+
+```bash
+curl -sS -X POST "$API_BASE/api/tenant-db" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "database_name":"tenantdb1",
+    "ram_mb":512,
+    "storage_mb":5120,
+    "cpu_shares":512,
+    "idempotency_key":"create-db-0001"
+  }'
+```
+
+### Check tenant DB job status
+
+```bash
+curl -sS "$API_BASE/api/tenant-db/jobs/<jobId>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### List tenant databases
+
+```bash
+curl -sS "$API_BASE/api/tenant-db" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Update tenant database config
+
+```bash
+curl -sS -X PATCH "$API_BASE/api/tenant-db/<tenantDatabaseId>" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ram_mb":1024,
+    "idempotency_key":"update-db-0001"
+  }'
+```
+
+### Rotate tenant DB credentials
+
+```bash
+curl -sS -X POST "$API_BASE/api/tenant-db/<tenantDatabaseId>/rotate-credentials" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"idempotency_key":"rotate-db-0001"}'
+```
+
+### Delete tenant database
+
+```bash
+curl -sS -X DELETE "$API_BASE/api/tenant-db/<tenantDatabaseId>" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"idempotency_key":"delete-db-0001"}'
+```
+
 ## Queue/workers behavior
 
 - `UPLOAD_QUEUE`: unzip + upload files to MinIO
@@ -180,18 +348,6 @@ JWT is verified against remote JWKS:
 Sync cron is scheduled at startup from `src/server.ts` with BullMQ 6-field cron syntax (`sec min hour day month dayOfWeek`):
 
 - `0 */2 * * * *` (every 2 minutes at second `0`)
-
-## Database and migrations
-
-Drizzle scripts:
-
-```bash
-npm run gen   # generate migration files
-npm run mig   # apply migrations
-npm run push  # push schema directly
-```
-
-Schema file: `src/infrastructure/db/schema.ts`
 
 ## Notes on usage accounting
 
@@ -222,8 +378,10 @@ Schema file: `src/infrastructure/db/schema.ts`
 1. Start stack with Docker Compose
 2. Create page via `/api/pages/create`
 3. Upload ZIP via `/upload/:bucket`
-4. Check deployment and usage endpoints
-5. Delete page via `/api/pages/:id` when no longer needed
+4. Track upload with `/upload/status/:jobId`
+5. Check deployment and usage endpoints
+6. (Optional) create/manage tenant DB via `/api/tenant-db*`
+7. Delete page via `/api/pages/:id` when no longer needed
    
 ## Next implement 
 1. Site performance tracking with unlitehouse
