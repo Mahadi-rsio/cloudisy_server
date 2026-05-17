@@ -1,47 +1,42 @@
 #!/bin/bash
+set -euo pipefail
 
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic3VwYXZpc29yIn0.9N8y1ioo8nx8WjE_nw7FH4IzAmdmlAhyrL7YlilHq8U"
+API_URL="${API_URL:-http://localhost:3000}"
+TOKEN="${TOKEN:-CHANGE_ME}"
 
-# 1. create the postgres container
-docker run -d \
-  --name pg_x \
-  --network cloudisy_server_default \
-  -e POSTGRES_USER=x \
-  -e POSTGRES_PASSWORD=fahadpass \
-  -e POSTGRES_DB=mydb \
-  postgres:16-alpine
+REQUEST_BODY='{"username":"x","ram":512,"cpu":0.5}'
 
-# 2. wait until postgres is actually ready
-echo "Waiting for postgres..."
-until docker exec pg_x pg_isready -U x -d mydb; do
-  sleep 1
+echo "Queueing database provisioning..."
+CREATE_RESPONSE=$(curl -sS -X POST "${API_URL}/api/databases" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d "${REQUEST_BODY}")
+
+echo "Create response: ${CREATE_RESPONSE}"
+JOB_ID=$(python -c 'import json,sys; print(json.loads(sys.argv[1])["jobId"])' "${CREATE_RESPONSE}")
+
+echo "Polling job ${JOB_ID}..."
+for _ in $(seq 1 60); do
+  STATUS_RESPONSE=$(curl -sS -X GET "${API_URL}/api/databases/status/${JOB_ID}" \
+    -H "Authorization: Bearer ${TOKEN}")
+
+  STATUS=$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("status",""))' "${STATUS_RESPONSE}")
+  echo "Status: ${STATUS}"
+
+  if [ "${STATUS}" = "ready" ]; then
+    CONNECTION_URL=$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("connectionUrl",""))' "${STATUS_RESPONSE}")
+    echo "Connection URL: ${CONNECTION_URL}"
+    exit 0
+  fi
+
+  if [ "${STATUS}" = "failed" ]; then
+    ERROR_MESSAGE=$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("error",""))' "${STATUS_RESPONSE}")
+    echo "Provisioning failed: ${ERROR_MESSAGE}"
+    exit 1
+  fi
+
+  sleep 2
 done
 
-# 3. register in supavisor
-curl -X PUT http://localhost:4000/api/tenants/x \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "tenant": {
-      "db_host": "pg_x",
-      "db_port": 5432,
-      "db_database": "mydb",
-      "ip_version": "auto",
-      "enforce_ssl": false,
-      "require_user": true,
-      "users": [
-        {
-          "db_user": "x",
-          "db_password": "fahadpass",
-          "pool_size": 10,
-          "mode_type": "transaction",
-          "is_manager": true
-        }
-      ]
-    }
-  }'
-
-echo ""
-
-# 4. connect
-psql "postgres://x.x:fahadpass@localhost:6543/mydb?sslmode=disable"
+echo "Provisioning timed out"
+exit 1

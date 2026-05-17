@@ -46,7 +46,7 @@ It manages project/page provisioning, ZIP-based deployments to MinIO, dynamic Ca
   - `storage/` MinIO
   - `proxy/` Caddy dynamic routing
 - `src/queue/jobs/` - BullMQ queue definitions
-- `src/queue/workers/` - background workers
+- `src/queue/workers/` - background workers (upload/log/sync/database)
 - `config/Caddyfile` - Caddy base config
 - `config/vector.toml` - Vector pipeline config
 - `docker-compose.yml` - full local stack
@@ -83,7 +83,7 @@ docker compose up --build
 Services started:
 
 - `app` (Express API) on `3000`
-- `upload_worker`, `log_worker`, `sync_worker`
+- `upload_worker`, `log_worker`, `sync_worker`, `database_worker`
 - `db` (PostgreSQL)
 - `redis`
 - `minio`
@@ -115,6 +115,7 @@ Run workers in separate processes:
 node dist/src/queue/workers/upload.worker.js
 node dist/src/queue/workers/log.worker.js
 node dist/src/queue/workers/sync.worker.js
+node dist/src/queue/workers/database.worker.js
 ```
 
 ## Authentication
@@ -155,11 +156,21 @@ JWT is verified against remote JWKS:
 
 - `POST /internal/log` (internal use by Vector)
 
+### Databases
+
+- `POST /api/databases` (auth)
+  Body:
+  ```json
+  { "username": "demo", "ram": 512, "cpu": 0.5 }
+  ```
+- `GET /api/databases/status/:jobId` (auth)
+
 ## Queue/workers behavior
 
 - `UPLOAD_QUEUE`: unzip + upload files to MinIO
 - `LOGS_QUEUE`: increment Redis usage counters from access logs
 - `SYNC_QUEUE`: flush counters to PostgreSQL
+- `DATABASE_QUEUE`: create tenant PostgreSQL container, register in Supavisor, and persist connection URL
 
 Sync cron is scheduled at startup from `src/server.ts` with BullMQ 6-field cron syntax (`sec min hour day month dayOfWeek`):
 
