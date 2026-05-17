@@ -69,9 +69,15 @@ services:
     container_name: postgres_db
     env_file: .env
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mydb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: always
 
   minio:
@@ -94,17 +100,17 @@ services:
     restart: unless-stopped
 
   supavisor:
-    image: supabase/supavisor:latest
+    image: supabase/supavisor:2.7.4
     ports:
       - "5432:5432"
       - "6543:6543"
       - "4000:4000"
     environment:
       SECRET_KEY_BASE: "3b541285a851b9fa5e3b9e8e4b4f8e2a7c9d1f6a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8"
-      VAULT_ENC_KEY: "afsgchdbfhvjndhfhfyryrgfhdhsjdjdkdiwysyudgscgsucysdgcuyasdcgu"
+      VAULT_ENC_KEY: "NJr1d2tpEzJY6pH00INDQpPFjE/gbE2y"
       API_JWT_SECRET: "supersecretapikey"
       METRICS_JWT_SECRET: "supermetricssecret"
-      DATABASE_URL: "ecto://postgres:postgres@supavisor_db:5432/supavisor"
+      DATABASE_URL: "ecto://postgres:postgres@db:5432/mydb"
       CLUSTER_POSTGRES: "true"
       PORT: "4000"
       PROXY_PORT_SESSION: "5432"
@@ -114,8 +120,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - dbnet
     restart: unless-stopped
 
 
