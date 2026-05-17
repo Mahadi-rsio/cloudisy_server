@@ -17,7 +17,8 @@ export const databaseProvisioningConfig = {
   minStorageMb: toInt(process.env.TENANT_DB_MIN_STORAGE_MB, 512),
   maxStorageMb: toInt(process.env.TENANT_DB_MAX_STORAGE_MB, 102400),
   supavisorApiUrl: process.env.SUPAVISOR_API_URL || '',
-  supavisorApiToken: process.env.SUPAVISOR_API_TOKEN || ''
+  supavisorApiToken: process.env.SUPAVISOR_API_TOKEN || '',
+  supavisorPublicHost: process.env.SUPAVISOR_PUBLIC_HOST || 'localhost',
 }
 
 export function validateDatabaseProvisioningEnv() {

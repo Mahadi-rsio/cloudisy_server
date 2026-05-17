@@ -28,4 +28,4 @@ MINIO_SECRET_KEY=minioadmin
 DOCKER_NETWORK=cloudisy_network
 SUPAVISOR_API_URL=http://supavisor:4000
 SUPAVISOR_API_TOKEN=supersecretapikey"
-SUPAVISOR_PUBLIC_HOST=your-vps-ip-or-domain
+SUPAVISOR_PUBLIC_HOST=localhost
