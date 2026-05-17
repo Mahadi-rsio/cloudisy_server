@@ -224,7 +224,20 @@ Schema file: `src/infrastructure/db/schema.ts`
 3. Upload ZIP via `/upload/:bucket`
 4. Check deployment and usage endpoints
 5. Delete page via `/api/pages/:id` when no longer needed
-   
+
+# Quick Installation at vps 
+1. Setup docker at Ubuntu 24
+```bash
+curl -fsSL 
+https://gist.github.com/Mahadi-rsio/7556fa3a061f24f2423d4a64c8dca1ad/raw | bash
+```
+
+2. Setup Nodejs at Ubuntu 24
+```bash
+
+```
+
+  
 ## Next implement 
 1. Site performance tracking with unlitehouse
 2. Site monitoring with umami to track peak time, bandwidth, visitor, region 
