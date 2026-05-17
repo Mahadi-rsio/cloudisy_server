@@ -9,7 +9,7 @@ DRIZZLE_CONNECTION=postgresql://postgres:postgres@localhost:5433/mydb
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=mydb
-DB=postgresql://postgres:postgres@db:5433/mydb
+DB=postgresql://postgres:postgres@db:5432/mydb
 
 
 
