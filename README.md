@@ -234,7 +234,10 @@ https://gist.github.com/Mahadi-rsio/7556fa3a061f24f2423d4a64c8dca1ad/raw | bash
 
 2. Setup Nodejs at Ubuntu 24
 ```bash
-
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.bashrc
+nvm install 22
+nvm use 22
 ```
 
   
