@@ -16,7 +16,7 @@ RUN npm run build && npm run gen
 # ---- migrator ----
 FROM node:20-alpine AS migrator
 WORKDIR /app
-ENV NODE_ENV=production
+#ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm install
 COPY --from=builder /app/dist ./dist
