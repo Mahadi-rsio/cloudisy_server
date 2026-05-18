@@ -1,37 +1,35 @@
-# ---- deps (install with dev deps for building) ----
+# ---- deps ----
 FROM node:20-alpine AS deps
 WORKDIR /app
-
-COPY package.json  ./
+COPY package.json package-lock.json ./
 RUN npm install
 
-# ---- builder (compile TS) ----
+# ---- builder (compile TS + gen at build time) ----
 FROM node:20-alpine AS builder
 WORKDIR /app
-
-# reuse node_modules with dev deps from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/package-lock.json ./package-lock.json
-
 COPY . .
+RUN npm run build && npm run gen
 
-RUN npm run build
+# ---- migrator ----
+FROM node:20-alpine AS migrator
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/drizzle ./drizzle
+CMD ["npm", "run", "migrate"]
 
-# ---- runner (prod deps only) ----
+# ---- runner ----
 FROM node:20-alpine AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
-
 COPY package.json package-lock.json ./
-
-# install ONLY production dependencies
 RUN npm install --omit=dev
-
-# only bring compiled output
 COPY --from=builder /app/dist ./dist
-
+COPY --from=builder /app/drizzle ./drizzle
 EXPOSE 3000
-
 CMD ["node", "dist/src/server.js"]
