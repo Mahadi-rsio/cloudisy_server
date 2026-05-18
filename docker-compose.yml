@@ -35,7 +35,7 @@ services:
     container_name: migrator
     env_file: .env
     command: >
-      sh -c "npm run gen && npm run migrate"
+      sh -c "npm install && npm run gen && npm run mig"
     depends_on:
       db:
         condition: service_healthy
