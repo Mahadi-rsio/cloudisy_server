@@ -21,6 +21,7 @@ COPY package.json package-lock.json ./
 RUN npm install
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 CMD ["npm", "run", "migrate"]
 
 # ---- runner ----
