@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "679471f767810bf5f04aeffe65b172265039f7d0",
-    "indexed_at": "2026-07-28T10:09:32Z",
+    "commit": "407d0d34ac5f8814a99b30628556fc97acc64eb8",
+    "indexed_at": "2026-07-28T10:17:33Z",
     "project": "workspaces-pagex",
-    "nodes": 2949,
-    "edges": 4551,
+    "nodes": 2987,
+    "edges": 4592,
     "original_size": 6881280,
-    "compressed_size": 1237028,
+    "compressed_size": 1240906,
     "compression_level": 3
 }
