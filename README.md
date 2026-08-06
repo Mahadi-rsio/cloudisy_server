@@ -1,6 +1,6 @@
 # PageX - Multi-Tenant Static Site Hosting Platform
 
-A scalable, Nix-based monorepo for hosting multi-tenant static sites with content-addressed blob storage, automatic compression/optimization, and instant deployments.
+A scalable monorepo for hosting multi-tenant static sites with content-addressed blob storage, automatic compression/optimization, and instant deployments.
 
 ---
 
@@ -39,12 +39,10 @@ pagex/
 │   ├── api/                      # Main Express backend REST API (@pagex/api)
 │   │   ├── src/                  # TypeScript source code (site/deployment management, auth)
 │   │   ├── Dockerfile            # Multi-stage production Docker build & migrator target
-│   │   ├── flake.nix             # Nix development environment for API service
 │   │   └── package.json          # API service dependencies & scripts
 │   ├── blob-server/              # High-performance Caddy server with static_s3 plugin (@pagex/blob-server)
 │   │   ├── src/                  # Go source code for custom Caddy static_s3 plugin & cache engine
 │   │   ├── Dockerfile            # Go + Caddy multi-stage builder Dockerfile
-│   │   ├── flake.nix             # Nix development environment with Go & Caddy
 │   │   ├── Caddyfile             # Caddy routing, caching, and compression rules
 │   │   └── package.json          # Package management for blob-server
 │   └── console/                  # Next.js web dashboard & console app (@pagex/console)
@@ -57,7 +55,6 @@ pagex/
 │       │   └── store/            # Zustand state stores
 │       ├── Dockerfile            # Next.js production Docker build
 │       ├── Dockerfile.migrator   # Database migrator Dockerfile for Better Auth / console DB
-│       ├── flake.nix             # Nix development environment for console
 │       └── package.json          # Console dependencies & scripts
 ├── scripts/                      # Global orchestration scripts
 │   └── docker.sh                 # Robust Docker Compose wrapper (env validation, service shortcuts)
@@ -65,10 +62,8 @@ pagex/
 ├── .env.example                  # Environment variables example file
 ├── Caddyfile                     # Root Caddy reverse proxy configuration
 ├── RESTRUCTURING_SUMMARY.md      # Monorepo architecture transition documentation
-├── flake.nix                     # Root Nix flake defining global dev shells & packages
-├── flake.lock                    # Nix flake dependency lock file
-├── package.json                  # Root package.json defining pnpm workspaces & turbo tasks
-└── turbo.json                    # Turborepo task pipeline configuration (build, dev, lint, test)
+├── package.json                  # Root package.json defining pnpm workspaces and scripts
+└── pnpm-workspace.yaml           # Workspace package definitions
 ```
 
 ---
@@ -114,10 +109,9 @@ PageX combines a Next.js control panel, an Express management API, a custom Cadd
 ## 🚀 Getting Started & Prerequisites
 
 ### Prerequisites
-- **Nix** (with flakes enabled) - Recommended for reproducible environments.
 - **Docker & Docker Compose** - For containerized stack execution.
 - **pnpm** (v8+) - Monorepo package manager.
-- **Node.js** (v18+) & **Go** (v1.20+) - If developing outside containers or Nix.
+- **Node.js** (v18+) & **Go** (v1.20+) - If developing outside containers.
 
 ---
 
@@ -149,20 +143,9 @@ PageX combines a Next.js control panel, an Express management API, a custom Cadd
 
 ---
 
-## 🛠️ Development Guide (Local & Nix)
+## 🛠️ Development Guide (Local)
 
-### Using Nix Development Shells
-```bash
-# Enter root development environment
-nix develop
-
-# Enter service-specific environments
-nix develop -c api
-nix develop -c blob-server
-nix develop -c console
-```
-
-### Using pnpm Workspaces & Turborepo
+### Using pnpm Workspaces
 ```bash
 # Install all monorepo dependencies
 pnpm install
@@ -190,7 +173,7 @@ pnpm run lint
 | Script | Action |
 |---|---|
 | `pnpm install` | Install all workspace dependencies |
-| `pnpm build` | Build all packages and services using Turbo |
+| `pnpm build` | Build API, blob-server, and console services |
 | `pnpm dev:api` | Start the Express API in development mode |
 | `pnpm dev:console` | Start the Next.js Console in development mode |
 | `pnpm db:migrate` | Execute database migrations across services |
@@ -256,9 +239,8 @@ These variables MUST be set in `infrastructure/configs/.env` (for Docker) or `.e
 PageX is designed from the ground up for maximum ease of use, rapid deployment, and developer efficiency:
 
 - **Zero-Config One-Command Setup:** Bring up the entire microservices stack (Next.js Console, Express API, Caddy Blob Server, PostgreSQL, Redis, MinIO S3) with a single command: `pnpm docker:up`.
-- **Reproducible Dev Shells with Nix:** Never face "works on my machine" issues. Use `nix develop` to automatically enter a pre-configured environment with Node.js, Go, pnpm, Caddy, PostgreSQL, and Redis installed.
 - **Content-Addressed & Instant Deployment:** Submitting a deployment uploads static blobs to MinIO with instant atomic site updates handled by Caddy edge proxying.
-- **Modular Monorepo Workflow:** Powered by `pnpm` workspaces and `Turborepo` for instant cached builds, shared TypeScript types (`@pagex/types`), utilities (`@pagex/utils`), and schemas (`@pagex/config`).
+- **Modular Monorepo Workflow:** Powered by `pnpm` workspaces with shared TypeScript types (`@pagex/types`), utilities (`@pagex/utils`), and schemas (`@pagex/config`).
 
 ---
 

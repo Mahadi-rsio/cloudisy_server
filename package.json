@@ -5,18 +5,18 @@
   "private": true,
   "packageManager": "pnpm@8.15.0",
   "scripts": {
-    "dev": "turbo run dev --parallel",
+    "dev": "pnpm run dev:api & pnpm run dev:blob-server & pnpm run dev:console",
     "dev:api": "cd services/api && pnpm run dev",
     "dev:blob-server": "cd services/blob-server && go run .",
     "dev:console": "cd services/console && pnpm run dev",
-    "build": "turbo run build",
+    "build": "pnpm run build:api && pnpm run build:blob-server && pnpm run build:console",
     "build:api": "cd services/api && pnpm run build",
     "build:blob-server": "cd services/blob-server && go build -o caddy .",
     "build:console": "cd services/console && pnpm run build",
-    "lint": "turbo run lint",
+    "lint": "pnpm run lint:api && pnpm run lint:console",
     "lint:api": "cd services/api && pnpm run lint",
     "lint:console": "cd services/console && pnpm run lint",
-    "test": "turbo run test",
+    "test": "pnpm run test:api && pnpm run test:console",
     "test:api": "cd services/api && pnpm run test",
     "test:console": "cd services/console && pnpm run test",
     "db:generate": "cd services/api && pnpm run db:generate",
@@ -37,16 +37,10 @@
     "docker:api": "bash scripts/docker.sh api",
     "docker:workers": "bash scripts/docker.sh workers",
     "docker:config": "bash scripts/docker.sh config",
-    "nix:build": "nix build",
-    "nix:dev": "nix develop",
-    "nix:dev:api": "nix develop -c api",
-    "nix:dev:blob-server": "nix develop -c blob-server",
-    "nix:dev:console": "nix develop -c console",
     "clean": "rm -rf node_modules dist .next pnpm-lock.yaml",
     "clean:all": "rm -rf node_modules services/*/node_modules services/*/dist services/*/.next pnpm-lock.yaml"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
     "typescript": "^5.3.0"
   },
   "engines": {
@@ -59,7 +53,6 @@
     "hosting",
     "multi-tenant",
     "monorepo",
-    "nix",
     "docker"
   ],
   "author": "",

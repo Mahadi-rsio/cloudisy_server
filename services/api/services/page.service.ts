@@ -1,5 +1,6 @@
 import { db } from '../infrastructure/db/db.js'
 import {
+    builds,
     blobTreeEntries,
     blobs,
     deployments,
@@ -7,28 +8,63 @@ import {
     siteDailyStats,
     sites,
 } from '../infrastructure/db/schema.js'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import { redis } from '../infrastructure/cache/redis.js'
 import { TOP_LEVEL_DOMAIN } from '../constants/index.js'
 import { clearSiteFilesMap } from './deploy.service.js'
 import type { CreatePageInput } from '../validators/page.validator.js'
 
+const PROJECT_PREFIX_WORDS = [
+    'amber',
+    'brisk',
+    'cloud',
+    'dawn',
+    'echo',
+    'flux',
+    'glow',
+    'lunar',
+    'nova',
+    'pixel',
+    'swift',
+    'zen',
+]
+
+function toSubdomainPart(value: string): string {
+    const normalized = value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+    return normalized || 'project'
+}
+
 export async function createPage(
     data: CreatePageInput,
     reqHeader: { tenant_name: string; tenant_id: string }
 ) {
-    let { project_name } = data
+    const baseProjectName = toSubdomainPart(data.project_name)
 
     if (!reqHeader.tenant_id || !reqHeader.tenant_name) {
         return { message: 'token is not valid' }
     }
 
-    // Ensure subdomain uniqueness — append a short random suffix if taken
     const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890')
-    const existingSite = await db.select().from(sites).where(eq(sites.subdomain, project_name))
-    if (existingSite.length > 0) {
-        project_name = `${project_name}${nanoid(4)}`.toLowerCase()
+    const randomWord = PROJECT_PREFIX_WORDS[Math.floor(Math.random() * PROJECT_PREFIX_WORDS.length)] || 'nova'
+    const prefixedBase = `${randomWord}-${baseProjectName}`
+
+    let project_name = prefixedBase
+    let suffixAttempt = 0
+    while (true) {
+        const [existingSite] = await db
+            .select({ id: sites.id })
+            .from(sites)
+            .where(eq(sites.subdomain, project_name))
+            .limit(1)
+        if (!existingSite) break
+        suffixAttempt += 1
+        project_name = `${prefixedBase}-${nanoid(Math.min(8, 4 + suffixAttempt))}`
     }
 
     const domain = `${project_name}.${TOP_LEVEL_DOMAIN}`
@@ -165,6 +201,13 @@ export async function getPageUsage(domain: string) {
     const totalRequests = flushedRequests + live.requests
     const totalBandwidth = flushedBandwidth + live.bandwidth
     const storage = await getActiveDeploymentStorage(page.id)
+    const [buildTimeRow] = await db
+        .select({
+            total_seconds: sql<number>`coalesce(sum(extract(epoch from (${builds.completed_at} - ${builds.created_at}))), 0)::bigint`.mapWith(Number),
+        })
+        .from(builds)
+        .where(and(eq(builds.page_id, page.id), isNotNull(builds.completed_at)))
+    const buildTimeSeconds = buildTimeRow?.total_seconds ?? 0
 
     return {
         requests: {
@@ -193,6 +236,10 @@ export async function getPageUsage(domain: string) {
         traffic: {
             bots: (flushedRow?.bots ?? 0) + live.bots,
             humans: (flushedRow?.humans ?? 0) + live.humans,
+        },
+        build_time: {
+            total_seconds: buildTimeSeconds,
+            total_human: `${(buildTimeSeconds / 60).toFixed(2)} min`,
         },
     }
 }

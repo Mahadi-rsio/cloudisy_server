@@ -143,6 +143,10 @@ export interface ApiUsage {
         bots: number;
         humans: number;
     };
+    build_time?: {
+        total_seconds: number;
+        total_human: string;
+    };
 }
 
 export interface CreatePageInput {

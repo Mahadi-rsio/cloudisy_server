@@ -114,6 +114,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             // Map back to console project
             const project: Project = {
                 ...projectData,
+                name: apiPage.project_name,
                 id: apiPage.id,
                 domain: apiPage.domain,
                 createdAt: apiPage.createdAt,

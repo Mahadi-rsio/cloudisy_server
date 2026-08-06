@@ -2128,10 +2128,18 @@ function BuildsTab({ project }: { project: Project }) {
                                                         className="h-1.5 mb-2"
                                                     />
                                                 )}
-                                                <div className="overflow-hidden rounded-lg border border-[#2d3139] bg-[#0d1117] font-mono text-xs text-slate-300">
+                                                <div className="overflow-hidden rounded-xl border border-zinc-800/90 bg-black font-mono text-xs text-zinc-300">
+                                                    <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-950 px-3 py-2">
+                                                        <span className="size-2 rounded-full bg-zinc-700" />
+                                                        <span className="size-2 rounded-full bg-zinc-600" />
+                                                        <span className="size-2 rounded-full bg-zinc-500" />
+                                                        <span className="ml-1 text-[11px] text-zinc-400">
+                                                            Build logs
+                                                        </span>
+                                                    </div>
                                                     <div className="h-56 space-y-1 overflow-y-auto p-3">
                                                         {logs.length === 0 ? (
-                                                            <p className="text-slate-500">
+                                                            <p className="text-zinc-500">
                                                                 Waiting for log
                                                                 output…
                                                             </p>
@@ -2140,7 +2148,13 @@ function BuildsTab({ project }: { project: Project }) {
                                                                 (line, i) => (
                                                                     <p
                                                                         key={`${i}-${line}`}
-                                                                        className="text-slate-400"
+                                                                        className={
+                                                                            line.startsWith(
+                                                                                "[error]",
+                                                                            )
+                                                                                ? "text-red-400"
+                                                                                : "text-zinc-400"
+                                                                        }
                                                                     >
                                                                         {line}
                                                                     </p>
@@ -2148,7 +2162,7 @@ function BuildsTab({ project }: { project: Project }) {
                                                             )
                                                         )}
                                                         {!logDone && (
-                                                            <span className="inline-block h-3 w-1.5 animate-pulse bg-slate-300" />
+                                                            <span className="inline-block h-3 w-1.5 animate-pulse bg-zinc-200" />
                                                         )}
                                                         <div ref={logBoxRef} />
                                                     </div>
@@ -2270,195 +2284,62 @@ function UsageTab({ project }: { project: Project }) {
 
     if (!usage) return null;
 
-    const bandwidthUsed = usage.bandwidth.used_bytes;
-    const bandwidthLimit = usage.bandwidth.limit_bytes || 1;
-    const syncMinutes = Math.max(
-        1,
-        Math.round((usage.sync.interval_seconds || 120) / 60),
-    );
+    const requestCount = usage.requests.used;
+    const bandwidthCount = usage.bandwidth.used_bytes;
+    const buildTimeSeconds = usage.build_time?.total_seconds ?? 0;
 
     return (
-        <div className="space-y-4">
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <CardTitle className="text-sm">
-                                Realtime usage
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Live Redis counters + flushed DB totals
-                                {lastUpdated
-                                    ? ` · updated ${formatRelativeTime(lastUpdated.toISOString())}`
-                                    : ""}
-                            </CardDescription>
-                        </div>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-2 shrink-0"
-                            onClick={() => loadUsage(true)}
-                            disabled={refreshing}
-                        >
-                            <RefreshCw
-                                className={`size-3.5 ${refreshing ? "animate-spin" : ""}`}
-                            />
-                            Refresh
-                        </Button>
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <CardTitle className="text-sm">Usage</CardTitle>
+                        <CardDescription className="text-xs">
+                            Combined live Redis + flushed DB totals
+                            {lastUpdated
+                                ? ` · updated ${formatRelativeTime(lastUpdated.toISOString())}`
+                                : ""}
+                        </CardDescription>
                     </div>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                            variant={
-                                usage.sync.pending_flush
-                                    ? "secondary"
-                                    : "outline"
-                            }
-                            className="text-xs"
-                        >
-                            {usage.sync.pending_flush
-                                ? "Pending Redis → DB flush"
-                                : "Fully flushed to DB"}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                            Blob-server flushes about every {syncMinutes} min
-                        </span>
-                    </div>
-                    {usage.traffic && (
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                                <p className="text-xs text-muted-foreground">
-                                    Humans
-                                </p>
-                                <p className="text-sm font-medium text-foreground mt-0.5">
-                                    {usage.traffic.humans.toLocaleString()}
-                                </p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                                <p className="text-xs text-muted-foreground">
-                                    Bots (incl. curl)
-                                </p>
-                                <p className="text-sm font-medium text-foreground mt-0.5">
-                                    {usage.traffic.bots.toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Activity className="size-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-foreground">
-                                Requests
-                            </span>
-                        </div>
-                        <span className="text-sm text-muted-foreground font-medium">
-                            {usage.requests.used.toLocaleString()} /{" "}
-                            {usage.requests.limit.toLocaleString()}
-                        </span>
-                    </div>
-                    <Progress
-                        value={
-                            usage.requests.limit > 0
-                                ? (usage.requests.used / usage.requests.limit) *
-                                  100
-                                : 0
-                        }
-                        className="h-2"
-                    />
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                            <p className="text-xs text-muted-foreground">
-                                Flushed (DB)
-                            </p>
-                            <p className="text-sm font-medium text-foreground mt-0.5">
-                                {usage.requests.flushed.toLocaleString()}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                            <p className="text-xs text-muted-foreground">
-                                Live (Redis)
-                            </p>
-                            <p className="text-sm font-medium text-foreground mt-0.5">
-                                {usage.requests.live.toLocaleString()}
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <HardDrive className="size-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-foreground">
-                                Bandwidth
-                            </span>
-                        </div>
-                        <span className="text-sm text-muted-foreground font-medium">
-                            {formatBytes(bandwidthUsed)} /{" "}
-                            {usage.bandwidth.limit}
-                        </span>
-                    </div>
-                    <Progress
-                        value={
-                            bandwidthLimit > 0
-                                ? (bandwidthUsed / bandwidthLimit) * 100
-                                : 0
-                        }
-                        className="h-2"
-                    />
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                            <p className="text-xs text-muted-foreground">
-                                Flushed (DB)
-                            </p>
-                            <p className="text-sm font-medium text-foreground mt-0.5">
-                                {formatBytes(usage.bandwidth.flushed_bytes)}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-border bg-muted/20 p-2.5">
-                            <p className="text-xs text-muted-foreground">
-                                Live (Redis)
-                            </p>
-                            <p className="text-sm font-medium text-foreground mt-0.5">
-                                {formatBytes(usage.bandwidth.live_bytes)}
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <FileText className="size-4 text-muted-foreground" />
-                            <span className="text-sm font-medium text-foreground">
-                                App storage
-                            </span>
-                        </div>
-                        <span className="text-sm text-muted-foreground font-medium">
-                            {usage.storage.human}
-                        </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                        {usage.storage.file_count.toLocaleString()} file
-                        {usage.storage.file_count === 1 ? "" : "s"} in the
-                        active deployment
-                        {usage.storage.bytes > 0
-                            ? ` (${formatBytes(usage.storage.bytes)})`
-                            : ""}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 shrink-0"
+                        onClick={() => loadUsage(true)}
+                        disabled={refreshing}
+                    >
+                        <RefreshCw
+                            className={`size-3.5 ${refreshing ? "animate-spin" : ""}`}
+                        />
+                        Refresh
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 pt-0 sm:grid-cols-3">
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Requests count</p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                        {requestCount.toLocaleString()}
                     </p>
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">
+                        Bandwidth count
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                        {formatBytes(bandwidthCount)}
+                    </p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Build time</p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                        {buildTimeSeconds < 60
+                            ? `${buildTimeSeconds}s`
+                            : `${(buildTimeSeconds / 60).toFixed(2)} min`}
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
